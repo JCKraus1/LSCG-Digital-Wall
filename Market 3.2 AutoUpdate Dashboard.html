@@ -1,0 +1,1813 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LSCG - Tillman Market 3.2 Port Charlotte Operations Dashboard</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Arial', sans-serif;
+            background: #424242;
+            background-image: url("https://weatherwidget.io/i/random_grey.png");
+            width: 100%;
+            height: 850px;
+            overflow-x: hidden;
+            color: #ffffff;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+        }
+        
+        .container {
+    	    width: 1920px !important;
+    	    height: 1080px !important;
+    	    min-width: 1920px;
+     	    min-height: 1080px;
+            padding: 16px;
+            display: grid;
+            grid-template-rows: auto 1fr auto;
+            gap: 12px;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            box-sizing: border-box;
+            overflow: hidden;
+        }
+        
+        .header {
+            background: rgba(22, 22, 24, .3);
+            color: white;
+            padding: 0px 20px;
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+            animation: headerGlow 4s ease-in-out infinite alternate;
+        }
+        
+        @keyframes headerGlow {
+            from { box-shadow: 0 2px 10px rgba(0,0,0,0.3); }
+            to { box-shadow: 0 2px 20px rgba(0, 191, 255, 0.3); }
+        }
+        
+        .header h1 {
+            font-size: 32px;
+            font-weight: 600;
+        }
+        
+        .header .date {
+            font-size: 18px;
+            opacity: 0.9;
+        }
+        
+        .main-content {
+            display: grid;
+            grid-template-columns: 300px 2fr 1fr;
+            gap: 12px;
+            height: 100%;
+            overflow: hidden;
+        }
+        
+        .left-column {
+            display: grid;
+            grid-template-rows: 1fr 1fr 1fr;
+            gap: 12px;
+        }
+        
+        .middle-column {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            
+        }
+        
+        .right-column {
+            display: grid;
+            grid-template-rows: 1fr 1fr 1fr;
+            gap: 12px;
+        }
+        
+        .panel {
+            background: #161618;
+            border-radius: 8px;
+            padding: 4px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+	
+	}
+        
+        .metrics-row {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            
+        }
+        
+        .metric-card {
+            background: #161618;
+            border-radius: 8px;
+            padding: 4px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            border-left: 4px solid;
+            text-align: center;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            animation: cardPulse 40s ease-in-out infinite;
+        }
+        
+        @keyframes cardPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+        }
+        
+        .metric-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+        
+        .metric-card.projects { border-left-color: #00bfff; }
+        .metric-card.footage { border-left-color: #ff6b6b; }
+        .metric-card.rate { border-left-color: #4ecdc4; }
+        .metric-card.completed { border-left-color: #45b7d1; }
+       
+        .metric-number {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 4px;
+            animation: numberGlow 2s ease-in-out infinite alternate;
+        }
+        
+        @keyframes numberGlow {
+            from { text-shadow: none; }
+            to { text-shadow: 0 0 35px currentColor; }
+        }
+     
+        .metric-card.projects .metric-number { color: #00bfff; }
+        .metric-card.footage .metric-number { color: #ff6b6b; }
+        .metric-card.rate .metric-number { color: #4ecdc4; }
+        .metric-card.completed .metric-number { color: #45b7d1; }  
+      
+        .metric-label {
+            font-size: 11px;
+            color: #8892b0;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            line-height: 1.2;
+        }
+        
+        .metric-chart-container {
+            position: relative;
+            width: 60px;
+            height: 60px;
+            margin: 10px 0;
+        }
+
+        .metric-chart-container svg {
+            width: 100%;
+            height: 100%;
+            transform: rotate(-90deg);
+        }
+
+        .metric-chart-container .donut-segment {
+            fill: none;
+            stroke-width: 3;
+            stroke-linecap: round;
+            animation: strokeGrow 60s ease-in-out infinite;
+        }
+
+        @keyframes strokeGrow {
+            0% { stroke-dasharray: 0 100; }
+            10% { stroke-dasharray: var(--stroke-length) 100; }
+            90% { stroke-dasharray: var(--stroke-length) 100; }
+            100% { stroke-dasharray: 0 100; }
+        }
+        
+        .metric-value-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+        }
+        
+        .metric-value-large {
+            font-size: 14px;
+            font-weight: bold;
+            line-height: 1;
+        }
+        
+        .metric-value-small {
+            font-size: 8px;
+            color: #8892b0;
+            margin-top: 2px;
+        }
+        
+        .chart-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #ffffff;
+            margin-bottom: 12px;
+            text-align: center;
+        }
+        
+        .bar-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+            animation: barSlide 0.8s ease-out;
+        }
+        
+        @keyframes barSlide {
+            from { transform: translateX(-20px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        .bar-label {
+            width: 60px;
+            font-size: 11px;
+            font-weight: 500;
+            color: #8892b0;
+        }
+        
+        .bar-container {
+            flex: 1;
+            background: #0e0e10;
+            border-radius: 10px;
+            height: 16px;
+            margin: 0 8px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .bar-fill {
+            height: 100%;
+            border-radius: 10px;
+            transition: width 1.5s ease-out;
+            animation: barGlow 3s ease-in-out infinite alternate;
+        }
+        
+        @keyframes barGlow {
+            from { filter: brightness(1); }
+            to { filter: brightness(1.2); }
+        }
+
+        @keyframes barGrowShrink {
+            0% { width: 0%; opacity: 0.5; }
+            50% { opacity: 1; }
+            100% { opacity: 1; }
+        }
+
+        .bar-fill.animated {
+            animation: barGrowShrink 2s ease-out;
+        }
+        
+        .bar-value {
+            font-size: 10px;
+            font-weight: 600;
+            color: #ffffff;
+            min-width: 40px;
+            text-align: right;
+        }
+        
+        .weather-box {
+            background: #161618;
+            border-radius: 8px;
+            padding: 4px;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+	    
+        }
+        
+        .weather-icon {
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
+        
+        .status-overview {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            padding: 10px;
+        }
+        
+        .status-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .status-section-title {
+            font-size: 12px;
+            color: #8892b0;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+        }
+        
+        .status-chart-container {
+            position: relative;
+            width: 100px;
+            height: 100px;
+            margin-bottom: 15px;
+        }
+
+        .status-chart-container svg {
+            width: 100%;
+            height: 100%;
+            transform: rotate(-90deg);
+        }
+
+        .status-chart-container .donut-segment {
+            fill: none;
+            stroke-width: 3;
+            stroke-linecap: round;
+            animation: strokeGrow 60s ease-in-out infinite;
+        }
+
+        .status-chart-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            pointer-events: none;
+        }
+
+        .status-chart-percent {
+            font-size: 16px;
+            font-weight: bold;
+            color: #ffffff;
+            line-height: 1;
+        }
+
+        .status-chart-label {
+            font-size: 8px;
+            color: #8892b0;
+            margin-top: 2px;
+        }
+
+        .donut-segment.completed { stroke: #4ecdc4; }
+        .donut-segment.testing { stroke: #1565C0; }
+        .donut-segment.active { stroke: #ff6b6b; }
+        .donut-segment.cleared { stroke: #4ecdc4; }
+        .donut-segment.issues { stroke: #ff6b6b; }
+        .donut-segment.waiting { stroke: #00bfff; }
+        
+        .status-legend {
+            width: 100%;
+        }
+        
+        .legend-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 4px 0;
+            font-size: 11px;
+            animation: legendFade 0.5s ease-in;
+        }
+        
+        @keyframes legendFade {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        .legend-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+            animation: colorPulse 2s ease-in-out infinite;
+        }
+        
+        @keyframes colorPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+        }
+        
+        .legend-label {
+            display: flex;
+            align-items: center;
+            flex: 1;
+        }
+        
+        .legend-value {
+            font-weight: bold;
+        }
+        
+        .issue-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 0;
+            font-size: 11px;
+            border-bottom: 1px solid #2a2a2c;
+            animation: itemSlide 0.5s ease-out;
+        }
+        
+        @keyframes itemSlide {
+            from { transform: translateX(-10px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        
+        .issue-item:last-child {
+            border-bottom: none;
+        }
+        
+        .issue-label {
+            color: #8892b0;
+        }
+        
+        .badge {
+            padding: 3px 8px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: 600;
+            animation: badgePulse 2s ease-in-out infinite;
+        }
+        
+        @keyframes badgePulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+        
+        .badge-green {
+            background: #4ecdc4;
+            color: white;
+        }
+        
+        .badge-red {
+            background: #ff6b6b;
+            color: white;
+        }
+        
+        .badge-blue {
+            background: #00bfff;
+            color: white;
+        }
+
+        .badge-yellow {
+            background: #f59e0b;
+            color: white;
+        }
+
+        .issue-count {
+            background: #ff6b6b;
+            color: white;
+            padding: 2px 6px;
+            border-radius: 10px;
+            font-size: 9px;
+            font-weight: 600;
+            animation: badgePulse 2s ease-in-out infinite;
+        }
+        
+        .warning-count {
+            background: #00bfff;
+            color: white;
+            padding: 2px 6px;
+            border-radius: 10px;
+            font-size: 9px;
+            font-weight: 600;
+            
+        }
+
+        .success-count {
+            background: #4ecdc4;
+            color: white;
+            padding: 2px 6px;
+            border-radius: 10px;
+            font-size: 9px;
+            font-weight: 600;
+            
+        }
+        
+        .footer {
+            background: #161618;
+            color: white;
+            border-radius: 8px;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            font-size: 12px;
+            animation: footerGlow 3s ease-in-out infinite alternate;
+            flex-shrink: 0;
+        }
+        
+        @keyframes footerGlow {
+            from { box-shadow: 0 2px 8px rgba(0,0,0,0.3); }
+            to { box-shadow: 0 2px 15px rgba(0, 191, 255, 0.6); }
+        }
+        
+        .footer-item {
+            padding: 4px;
+            text-align: center;
+        }
+        
+        .footer-label {
+            font-size: 8px;
+            color: #8892b0;
+            text-transform: uppercase;
+            margin-bottom: 4px;
+        }
+        
+        .footer-value {
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        @keyframes chartRefresh {
+            0% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.7; transform: scale(0.95); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+
+        .chart-refreshing {
+            animation: chartRefresh 1s ease-in-out;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div>
+                <h1>LSCG - Tillman Market 3.2 Port Charlotte Operations Dashboard</h1>
+            </div>
+            <div class="date" id="lastUpdated">Loading...</div>
+        </div>
+        
+        <div class="main-content">
+            <div class="left-column">
+                <div class="panel" style="display: flex; align-items: center; justify-content: center;" >
+                    <div style="text-align: center; padding: 0px;">
+                        <img src="LSCG_Logo_White_transparentbackground.png" width="100%" ></img>
+			<div style="font-size: 20px; font-weight: bold;" id="currentDate"></div>
+                        <div style="font-size: 20px; margin-top: 10px;" id="currentTime"></div>
+                    </div>
+                </div>
+                <div class="weather-box">
+<a class="weatherwidget-io" href="https://forecast7.com/en/26d98n82d09/port-charlotte/?unit=us" data-label_1="PORT CHARLOTTE" data-icons="Climacons Animated" data-days="3" data-theme="weather_one" >PORT CHARLOTTE</a>
+<script>
+!function(d,s,id){var js,fjs=d.getElementsByTagName(s)[0];if(!d.getElementById(id)){js=d.createElement(s);js.id=id;js.src='https://weatherwidget.io/js/widget.min.js';fjs.parentNode.insertBefore(js,fjs);}}(document,'script','weatherwidget-io-js');
+</script>
+                </div>
+                
+                <div class="panel" style="padding: 0; overflow: hidden;">
+			<center><img src="florida_vector_image.png" width="260px" /></center>
+                </div>
+                
+
+            </div>
+            
+            <div class="middle-column">
+                <div class="metrics-row">
+                    <div class="metric-card">
+                        <div class="metric-label">Total Projects</div>
+                        <div class="metric-chart-container" id="chartTotalProjects">
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">Completed</div>
+                        <div class="metric-chart-container" id="chartCompleted">
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">Total Footage</div>
+                        <div class="metric-chart-container" id="chartTotalFootage">
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">Completion Rate</div>
+                        <div class="metric-chart-container" id="chartCompletionRate">
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="metrics-row">
+                    <div class="metric-card">
+                        <div class="metric-label">Active Projects</div>
+                        <div class="metric-chart-container" id="chartActiveProjects">
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">Contractors</div>
+                        <div class="metric-chart-container" id="chartContractors">
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">Footage Remaining</div>
+                        <div class="metric-chart-container" id="chartFootageRemaining">
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">Risk Level</div>
+                        <div class="metric-chart-container" id="chartRiskLevel">
+                        </div>
+                    </div>
+                </div>
+                                <div class="panel" style="">
+                    <iframe width="100%" height="250px" src="https://embed.windy.com/embed.html?type=map&location=coordinates&metricRain=default&metricTemp=default&metricWind=default&zoom=9&overlay=radar&product=radar&level=surface&lat=26.993&lon=-82.120&message=false&play=1" frameborder="0"></iframe>
+                </div>
+                <div class="panel" style="flex: 1;">
+                    <div class="chart-title">Supervisor Workload Distribution</div>
+                    <div id="supervisorBarsFootage" style="max-height: 300px; overflow-y: auto;"></div>
+                    
+                    <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #2a2a2c;">
+                        <div class="chart-title" style="font-size: 16px;">Project Count Distribution</div>
+                        <div id="supervisorBarsProjects" style="max-height: 300px; overflow-y: auto;"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="right-column">
+                <div class="panel">
+                    <div class="chart-title">Project Status Overview</div>
+                    <div class="status-overview">
+                        <div class="status-section">
+                            <div class="status-section-title">Completion Status</div>
+                            <div class="status-chart-container" id="completionStatusChart">
+                            </div>
+                            <div class="status-legend" id="completionLegend"></div>
+                        </div>
+                        <div class="status-section">
+                            <div class="status-section-title">Locate Status</div>
+                            <div class="status-chart-container" id="locateStatusChart">
+                            </div>
+                            <div class="status-legend" id="locateLegend"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="panel">
+                    <div class="chart-title">Performance Metrics</div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">
+                        <div style="text-align: center; padding: 2px; background: #0e0e10; border-radius: 6px;">
+                            <div style="font-size: 20px; font-weight: bold; color: #4ecdc4;" id="footageComplete">0%</div>
+                            <div style="font-size: 11px; color: #8892b0; margin-top: 5px;">Footage Complete</div>
+                        </div>
+                        <div style="text-align: center; padding: 211:59 AM 10/20/2025px; background: #0e0e10; border-radius: 6px;">
+                            <div style="font-size: 20px; font-weight: bold; color: #00bfff;" id="totalCost">$0</div>
+                            <div style="font-size: 11px; color: #8892b0; margin-top: 5px;">SOW Estimated Cost</div>
+                        </div>
+                    </div>
+                    <div id="issuesList"></div>
+                </div>
+                
+                <div class="panel">
+                    <div class="chart-title">SOW Cost by Supervisor</div>
+                    <div id="supervisorCostChart" style="max-height: 280px; overflow-y: auto;"></div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <div class="footer-item">
+                <div class="footer-label">Construction Manager</div>
+                <div class="footer-value" style="font-size: 12px;">John C. Kraus</div>
+            </div>
+            <div class="footer-item">
+                <div class="footer-label">Target Date</div>
+                <div class="footer-value" id="targetDate">-</div>
+            </div>
+            <div class="footer-item">
+                <div class="footer-label">Required Daily Rate</div>
+                <div class="footer-value" id="dailyRate">0 ft/day</div>
+            </div>
+            <div class="footer-item">
+                <div class="footer-label">At Risk Status</div>
+                <div class="footer-value" id="atRiskStatus">-</div>
+            </div>
+        </div>
+
+     </div>
+
+    <script>
+        var dashboardData = {
+            rawData: [],
+	    sheetCounts: {
+        	sheet1: 0,
+        	sheet2: 0,
+        	sheet3: 0
+    		},
+            metrics: {},
+            charts: {}
+        };
+        
+        var EXCEL_URL = 'https://jckraus1.github.io/Tillman-Dashboard/tillman-project.xlsx';
+        var ANIMATION_INTERVAL = 45000; // 45 seconds for main charts
+        var STATUS_ANIMATION_INTERVAL = 30000; // 30 seconds for status charts
+        var BAR_ANIMATION_INTERVAL = 30000; // 30 seconds for bar charts
+        
+        function createDonutChart(canvasId, percentage, color1, color2) {
+            var container = document.getElementById(canvasId);
+            if (!container) return null;
+            
+            var chartHTML = '<svg viewBox="0 0 36 36">';
+            chartHTML += '<circle cx="18" cy="18" r="15.915" fill="none" stroke="' + color2 + '" stroke-width="3"></circle>';
+            chartHTML += '<circle class="donut-segment" cx="18" cy="18" r="15.915" ';
+            chartHTML += 'style="--stroke-length: ' + percentage + '; stroke: ' + color1 + ';"></circle>';
+            chartHTML += '</svg>';
+            
+            container.innerHTML = chartHTML;
+            return container;
+        }
+
+        function refreshChartAnimations() {
+            Object.keys(dashboardData.charts).forEach(function(chartId) {
+                if (chartId === 'completionStatusChart' || chartId === 'locateStatusChart') {
+                    return; // Skip status charts as they have their own animation
+                }
+                
+                var canvas = document.getElementById(chartId);
+                if (canvas) {
+                    canvas.classList.add('chart-refreshing');
+                    setTimeout(function() {
+                        canvas.classList.remove('chart-refreshing');
+                    }, 1000);
+                }
+                
+                var chart = dashboardData.charts[chartId];
+                if (chart && chart.update) {
+                    chart.update('active');
+                }
+            });
+        }
+
+        function refreshStatusCharts() {
+            // Charts will auto-animate with the infinite loop, no need to recreate
+            // This function can be used for data updates if needed
+            if (!dashboardData.metrics) return;
+            updateStatusOverview(dashboardData.metrics);
+        }
+
+        function animateBarCharts() {
+            var barContainers = document.querySelectorAll('.bar-fill');
+            barContainers.forEach(function(bar) {
+                var currentWidth = bar.style.width;
+                bar.style.width = '0%';
+                bar.classList.add('animated');
+                
+                setTimeout(function() {
+                    bar.style.width = currentWidth;
+                }, 50);
+                
+                setTimeout(function() {
+                    bar.classList.remove('animated');
+                }, 2000);
+            });
+        }
+        
+        function loadExcelData() {
+    console.log('Loading Excel from:', EXCEL_URL);
+    
+    fetch(EXCEL_URL)
+        .then(function(response) {
+            console.log('Fetch complete, status:', response.status);
+            if (!response.ok) throw new Error('HTTP ' + response.status);
+            return response.arrayBuffer();
+        })
+        .then(function(arrayBuffer) {
+            console.log('Got arrayBuffer, size:', arrayBuffer.byteLength);
+            
+            if (typeof XLSX === 'undefined') {
+                throw new Error('XLSX not loaded');
+            }
+            
+            var workbook = XLSX.read(arrayBuffer, { type: 'array' });
+            console.log('Workbook sheets:', workbook.SheetNames.join(', '));
+            
+            console.log('=== ALL SHEET NAMES ===');
+            for (var i = 0; i < workbook.SheetNames.length; i++) {
+                console.log(i + ':', workbook.SheetNames[i]);
+            }
+            console.log('======================');
+            
+            // Define the three sheets we want to read
+            var sheetNames = [
+                'Tillman UG Footage',
+                'Pending Resto-COP Packages',
+                'Projects Pending Tillman QC '
+            ];
+            
+            var combinedData = [];
+            var sheetCounts = { sheet1: 0, sheet2: 0, sheet3: 0 };
+            
+            // Loop through each sheet and combine the data
+            for (var i = 0; i < sheetNames.length; i++) {
+                var sheetName = sheetNames[i];
+                
+                // Check if sheet exists in workbook
+                if (workbook.SheetNames.indexOf(sheetName) !== -1) {
+                    console.log('Reading sheet:', sheetName);
+                    var worksheet = workbook.Sheets[sheetName];
+                    var jsonData = XLSX.utils.sheet_to_json(worksheet);
+                    console.log(sheetName + ' rows:', jsonData.length);
+                    
+                    // Add sheet source to each row for tracking
+                    jsonData.forEach(function(row) {
+                        row._sourceSheet = sheetName;
+                    });
+                    
+                    // Store sheet count
+                    if (i === 0) sheetCounts.sheet1 = jsonData.length;
+                    else if (i === 1) sheetCounts.sheet2 = jsonData.length;
+                    else if (i === 2) sheetCounts.sheet3 = jsonData.length;
+                    
+                    // Combine data from this sheet
+                    combinedData = combinedData.concat(jsonData);
+                } else {
+                    console.warn('Sheet not found:', sheetName);
+                }
+            }
+            
+            console.log('Total combined rows:', combinedData.length);
+            
+            // ===== NEW DEBUGGING SECTION =====
+            console.log('=== SAMPLE PROJECTS FROM COMPLETED SHEETS ===');
+            
+            var sheet2Projects = combinedData.filter(function(row) {
+                return row._sourceSheet === 'Pending Resto-COP Packages';
+            });
+            
+            var sheet3Projects = combinedData.filter(function(row) {
+                return row._sourceSheet === 'Projects Pending Tillman QC ';
+            });
+            
+            console.log('Sheet: Pending Resto-COP Packages - Total:', sheet2Projects.length);
+            if (sheet2Projects.length > 0) {
+                var sample = sheet2Projects[0];
+                console.log('  Sample NTP:', sample['NTP Number']);
+                console.log('  Area:', sample['AREA']);
+                console.log('  Construction Status:', sample['Construction Status']);
+                console.log('  Constuction Status:', sample['Constuction Status']);
+                console.log('  All column names:', Object.keys(sample).join(', '));
+            }
+            
+            console.log('Sheet: Projects Pending Tillman QC - Total:', sheet3Projects.length);
+            if (sheet3Projects.length > 0) {
+                var sample = sheet3Projects[0];
+                console.log('  Sample NTP:', sample['NTP Number']);
+                console.log('  Area:', sample['AREA']);
+                console.log('  Construction Status:', sample['Construction Status']);
+                console.log('  Constuction Status:', sample['Constuction Status']);
+                console.log('  All column names:', Object.keys(sample).join(', '));
+            }
+            
+            // Check Port Charlotte projects in completed sheets
+            var portCharSheet2 = sheet2Projects.filter(function(row) {
+                var area = (row.AREA || '').toString().toLowerCase();
+                return area.indexOf('portChar') !== -1;
+            });
+            
+            var portCharSheet3 = sheet3Projects.filter(function(row) {
+                var area = (row.AREA || '').toString().toLowerCase();
+                return area.indexOf('portChar') !== -1;
+            });
+            
+            console.log('Port Charlotte projects in Pending Resto-COP Packages:', portCharSheet2.length);
+            console.log('Port Charlotte projects in Projects Pending Tillman QC:', portCharSheet3.length);
+            
+            if (portCharSheet2.length > 0) {
+                var lkSample = portCharSheet2[0];
+                console.log('  Port Charlotte sample from sheet 2:');
+                console.log('    NTP:', lkSample['NTP Number']);
+                console.log('    Construction Status:', lkSample['Construction Status']);
+                console.log('    Constuction Status:', lkSample['Constuction Status']);
+            }
+            
+            if (portCharSheet3.length > 0) {
+                var lkSample = portCharSheet3[0];
+                console.log('  Port Charlotte sample from sheet 3:');
+                console.log('    NTP:', lkSample['NTP Number']);
+                console.log('    Construction Status:', lkSample['Construction Status']);
+                console.log('    Constuction Status:', lkSample['Constuction Status']);
+            }
+            
+            console.log('============================================');
+            // ===== END NEW DEBUGGING SECTION =====
+            
+            var portCharData = combinedData.filter(function(row) {
+                var area = (row.AREA || '').toString().toLowerCase();
+                return area.indexOf('port charlotte') !== -1;
+            });
+            
+            console.log('Total Port Charlotte projects (all sheets):', portCharData.length);
+            
+            dashboardData.rawData = portCharData.length > 0 ? portCharData : combinedData;
+            dashboardData.sheetCounts = sheetCounts;
+            dashboardData.metrics = computeMetrics(dashboardData.rawData);
+            
+            updateDashboard(dashboardData.metrics);
+            console.log('=== DASHBOARD UPDATED ===');
+        })
+        .catch(function(error) {
+            console.error('Error:', error);
+            document.getElementById('lastUpdated').textContent = 'Error: ' + error.message;
+            document.getElementById('lastUpdated').style.color = '#ff6b6b';
+        });
+}
+
+        
+function computeMetrics(data) {
+    var metrics = {
+        totalProjects: data.length,
+        completedCount: 0,
+        inProcessCount: 0,
+        notStartedCount: 0,
+        locateCalledCount: 0,
+        locateClearedCount: 0,
+        locateIssuesCount: 0,
+        locateWaitingCount: 0,
+        activeCount: 0,
+        totalFootage: 0,
+        completedFootage: 0,
+        totalCost: 0,
+        supervisorData: {},
+        vendorData: {}
+    };
+    
+    // Debug counters
+    var debugCounters = {
+        sheet1: 0,
+        sheet2: 0,
+        sheet3: 0,
+        completedFromSheet2: 0,
+        completedFromSheet3: 0,
+        completedFromSheet1: 0
+    };
+    
+    console.log('=== STARTING METRICS COMPUTATION ===');
+    console.log('Total projects to process:', data.length);
+    
+    for (var i = 0; i < data.length; i++) {
+        var project = data[i];
+        
+        // Get the source sheet
+        var sourceSheet = project._sourceSheet || '';
+        
+        // Track which sheet this came from
+        if (sourceSheet === 'Tillman UG Footage') debugCounters.sheet1++;
+        else if (sourceSheet === 'Pending Resto-COP Packages') debugCounters.sheet2++;
+        else if (sourceSheet === 'Projects Pending Tillman QC ') debugCounters.sheet3++;
+        
+        // Check BOTH possible column name spellings
+        var status = (project['Construction Status'] || project['Constuction Status'] || '').toString().toLowerCase();
+        
+        // Debug output for projects from the two completed sheets
+        if (sourceSheet === 'Pending Resto-COP Packages' || sourceSheet === 'Projects Pending Tillman QC ') {
+            console.log('---');
+            console.log('NTP:', project['NTP Number']);
+            console.log('Sheet:', sourceSheet);
+            console.log('Status (Construction):', project['Construction Status']);
+            console.log('Status (Constuction):', project['Constuction Status']);
+            console.log('Status lowercase:', status);
+            console.log('Has "complete"?', status.indexOf('complete') !== -1);
+            console.log('Has "not"?', status.indexOf('not') !== -1);
+        }
+        
+        // Count as completed if from completed sheets OR status says completed
+        if (sourceSheet === 'Pending Resto-COP Packages' || 
+            sourceSheet === 'Projects Pending Tillman QC ') {
+            
+            // Check if status actually says completed
+            if (status.indexOf('complete') !== -1 && status.indexOf('not') === -1) {
+                metrics.completedCount++;
+                
+                if (sourceSheet === 'Pending Resto-COP Packages') {
+                    debugCounters.completedFromSheet2++;
+                } else if (sourceSheet === 'Projects Pending Tillman QC ') {
+                    debugCounters.completedFromSheet3++;
+                }
+                
+                console.log('✓ COUNTED AS COMPLETE:', project['NTP Number']);
+            } else {
+                console.log('✗ NOT COUNTED - Status does not say complete:', project['NTP Number'], 'Status:', status);
+            }
+        } 
+        // For main sheet, check status normally
+        else if (status.indexOf('complete') !== -1 && status.indexOf('not') === -1) {
+            metrics.completedCount++;
+            debugCounters.completedFromSheet1++;
+        } else if (status.indexOf('process') !== -1) {
+            metrics.inProcessCount++;
+            metrics.activeCount++;
+        } else if (status.indexOf('not started') !== -1) {
+            metrics.notStartedCount++;
+        } else if (status.indexOf('locate') !== -1) {
+            metrics.locateCalledCount++;
+        }
+        
+        // Improved locate status logic
+        var constructionStatus = (project['Construction Status'] || project['Constuction Status'] || '').toString().toLowerCase();
+        var permitStatus = (project['Permit Status'] || '').toString().toLowerCase();
+        
+        // CLEARED: If "In Process" or "Completed" - locates are done
+        if (constructionStatus.indexOf('process') !== -1 || 
+            constructionStatus.indexOf('complete') !== -1) {
+            metrics.locateClearedCount++;
+        }
+        // PENDING: If "Locates Called" - waiting for locates
+        else if (constructionStatus.indexOf('locate') !== -1) {
+            metrics.locateWaitingCount++;
+        }
+        // ISSUES: If there's a problem with permits
+        else if (permitStatus.indexOf('issue') !== -1 || 
+                 permitStatus.indexOf('denied') !== -1) {
+            metrics.locateIssuesCount++;
+        }
+        // NOT STARTED: Everything else (Not Started, etc.)
+        else {
+            metrics.locateWaitingCount++;
+        }
+        
+        var footage = parseFloat((project['Footage UG'] || '0').toString().replace(/[,]/g, '')) || 0;
+        var completedFt = parseFloat((project['Actual Redline Completed Footage UG'] || '0').toString().replace(/[,]/g, '')) || 0;
+        metrics.totalFootage += footage;
+        metrics.completedFootage += completedFt;
+        
+        var cost = parseFloat((project['SOW Estimated Cost'] || '0').toString().replace(/[,$]/g, '')) || 0;
+        metrics.totalCost += cost;
+        
+        var supervisor = project['Assigned Supervisor'] || 'Unassigned';
+        if (!metrics.supervisorData[supervisor]) {
+            metrics.supervisorData[supervisor] = { footage: 0, projects: 0, cost: 0 };
+        }
+        metrics.supervisorData[supervisor].projects++;
+        metrics.supervisorData[supervisor].footage += footage;
+        metrics.supervisorData[supervisor].cost += cost;
+        
+        var vendor = project['Vendor Assignment'] || 'Unknown';
+        if (!metrics.vendorData[vendor]) {
+            metrics.vendorData[vendor] = 0;
+        }
+        metrics.vendorData[vendor]++;
+    }
+    
+    metrics.completionRate = metrics.totalFootage > 0 ? 
+        (metrics.completedFootage / metrics.totalFootage) * 100 : 0;
+    
+    metrics.remainingFootage = metrics.totalFootage - metrics.completedFootage;
+    
+    metrics.contractors = Object.keys(metrics.vendorData).length;
+    
+    // Final debug summary
+    console.log('=== METRICS COMPUTATION COMPLETE ===');
+    console.log('Projects by sheet:');
+    console.log('  - Tillman UG Footage:', debugCounters.sheet1);
+    console.log('  - Pending Resto-COP Packages:', debugCounters.sheet2);
+    console.log('  - Projects Pending Tillman QC:', debugCounters.sheet3);
+    console.log('Completed projects by sheet:');
+    console.log('  - From Tillman UG Footage:', debugCounters.completedFromSheet1);
+    console.log('  - From Pending Resto-COP Packages:', debugCounters.completedFromSheet2);
+    console.log('  - From Projects Pending Tillman QC:', debugCounters.completedFromSheet3);
+    console.log('TOTAL COMPLETED COUNT:', metrics.completedCount);
+    console.log('===================================');
+    
+    return metrics;
+}        
+        function calculateRiskLevel(metrics) {
+            var now = new Date();
+            var endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+            var daysRemaining = Math.ceil((endOfMonth - now) / (1000 * 60 * 60 * 24));
+            
+            var remainingFootage = metrics.totalFootage - metrics.completedFootage;
+            var dailyRate = daysRemaining > 0 ? remainingFootage / daysRemaining : 0;
+            
+            var riskLevel = 'LOW';
+            var riskPercent = 0;
+            var riskColor = '#4ecdc4';
+            
+            if (dailyRate > 500) {
+                riskLevel = 'HIGH';
+                riskPercent = 85;
+                riskColor = '#ff6b6b';
+            } else if (dailyRate > 300) {
+                riskLevel = 'MEDIUM';
+                riskPercent = 55;
+                riskColor = '#f59e0b';
+            } else {
+                riskLevel = 'LOW';
+                riskPercent = 25;
+                riskColor = '#4ecdc4';
+            }
+            
+            return { level: riskLevel, percent: riskPercent, color: riskColor };
+        }
+        
+        function calculateTargetMetrics(metrics) {
+    var now = new Date();
+    var endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    
+    // Calculate business days (excluding weekends)
+    var daysRemaining = 0;
+    var currentDate = new Date(now);
+    
+    while (currentDate <= endOfMonth) {
+        var dayOfWeek = currentDate.getDay();
+        // 0 = Sunday, 6 = Saturday
+        if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+            daysRemaining++;
+        }
+        currentDate.setDate(currentDate.getDate() + 1);
+    }
+    
+    var remainingFootage = metrics.totalFootage - metrics.completedFootage;
+    var dailyRate = daysRemaining > 0 ? remainingFootage / daysRemaining : 0;
+    
+    var atRisk = 'ON TRACK';
+    if (dailyRate > 500) {
+        atRisk = 'HIGH RISK';
+    } else if (dailyRate > 300) {
+        atRisk = 'AT RISK';
+    }
+    
+    return {
+        targetDate: endOfMonth.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+        dailyRate: Math.round(dailyRate),
+        atRisk: atRisk,
+        daysRemaining: daysRemaining // Now business days only
+    };
+}
+        
+        function updateDashboard(metrics) {
+            console.log('Updating dashboard with metrics:', metrics);
+            
+            // Update text values
+            document.getElementById('footageComplete').textContent = metrics.completionRate.toFixed(1) + '%';
+            document.getElementById('totalCost').textContent = formatCurrency(metrics.totalCost);
+            
+            var totalProjectsPercent = 100;
+            var completedPercent = metrics.totalProjects > 0 ? (metrics.completedCount / metrics.totalProjects) * 100 : 0;
+            var footagePercent = metrics.totalFootage > 0 ? (metrics.completedFootage / metrics.totalFootage) * 100 : 0;
+            var activePercent = metrics.totalProjects > 0 ? (metrics.activeCount / metrics.totalProjects) * 100 : 0;
+            var remainingPercent = metrics.totalFootage > 0 ? (metrics.remainingFootage / metrics.totalFootage) * 100 : 0;
+            
+            var riskData = calculateRiskLevel(metrics);
+            
+            // Create all metric card charts
+            createMetricChart('chartTotalProjects', 100, '#00bfff', metrics.totalProjects, 'Projects');
+            createMetricChart('chartCompleted', completedPercent, '#4ecdc4', metrics.completedCount, 'Complete');
+            createMetricChart('chartTotalFootage', footagePercent, '#ff6b6b', formatNumber(metrics.totalFootage), 'Feet');
+            createMetricChart('chartCompletionRate', metrics.completionRate, '#9c27b0', metrics.completionRate.toFixed(0) + '%', 'Complete');
+            createMetricChart('chartActiveProjects', activePercent, '#00bfff', metrics.activeCount, 'Active');
+            createMetricChart('chartContractors', 85, '#4ecdc4', metrics.contractors, 'Vendors');
+            createMetricChart('chartFootageRemaining', remainingPercent, '#ff6b6b', formatNumber(metrics.remainingFootage), 'Remaining');
+            createMetricChart('chartRiskLevel', riskData.percent, riskData.color, riskData.level, 'Risk');
+            
+            updateSupervisorBars(metrics.supervisorData, 'footage');
+            updateSupervisorBars(metrics.supervisorData, 'projects');
+            updateSupervisorCostChart(metrics.supervisorData);
+            updateIssuesList(metrics);
+            updateStatusOverview(metrics);
+            updateFooterMetrics(metrics);
+            updateTime();
+            
+            var now = new Date();
+            document.getElementById('lastUpdated').textContent = 'Updated: ' + now.toLocaleString();
+            document.getElementById('lastUpdated').style.color = '#4ecdc4';
+        }
+
+        function createMetricChart(containerId, percentage, color, value, label) {
+            var container = document.getElementById(containerId);
+            if (!container) return;
+            
+            var chartHTML = '<svg viewBox="0 0 36 36">';
+            chartHTML += '<circle cx="18" cy="18" r="15.915" fill="none" stroke="#2a2a2c" stroke-width="3"></circle>';
+            chartHTML += '<circle class="donut-segment" cx="18" cy="18" r="15.915" ';
+            chartHTML += 'style="--stroke-length: ' + percentage + '; stroke: ' + color + ';"></circle>';
+            chartHTML += '</svg>';
+            chartHTML += '<div class="metric-value-overlay">';
+            chartHTML += '<div class="metric-value-large">' + value + '</div>';
+            chartHTML += '<div class="metric-value-small">' + label + '</div>';
+            chartHTML += '</div>';
+            
+            container.innerHTML = chartHTML;
+        }
+        
+        function updateStatusOverview(metrics) {
+            var completionPercent = metrics.totalProjects > 0 ? 
+                ((metrics.completedCount / metrics.totalProjects) * 100) : 0;
+            
+            // Calculate percentages for completion chart
+            var total = metrics.completedCount + metrics.inProcessCount + metrics.activeCount;
+            var completedPercent = total > 0 ? (metrics.completedCount / total * 100) : 0;
+            var testingPercent = total > 0 ? (metrics.inProcessCount / total * 100) : 0;
+            var activePercent = total > 0 ? (metrics.activeCount / total * 100) : 0;
+            
+            // Calculate cumulative offsets
+            var completedOffset = 0;
+            var testingOffset = completedPercent;
+            var activeOffset = completedPercent + testingPercent;
+            
+            var completionChartHTML = '<svg viewBox="0 0 36 36">';
+            completionChartHTML += '<circle cx="18" cy="18" r="15.915" fill="none" stroke="#2a2a2c" stroke-width="3"></circle>';
+            
+            if (completedPercent > 0) {
+                completionChartHTML += '<circle class="donut-segment completed" cx="18" cy="18" r="15.915" ';
+                completionChartHTML += 'style="--stroke-length: ' + completedPercent + '; stroke-dashoffset: -' + completedOffset + '; animation-delay: 0s;"></circle>';
+            }
+            
+            if (testingPercent > 0) {
+                completionChartHTML += '<circle class="donut-segment testing" cx="18" cy="18" r="15.915" ';
+                completionChartHTML += 'style="--stroke-length: ' + testingPercent + '; stroke-dashoffset: -' + testingOffset + '; animation-delay: 0.4s;"></circle>';
+            }
+            
+            if (activePercent > 0) {
+                completionChartHTML += '<circle class="donut-segment active" cx="18" cy="18" r="15.915" ';
+                completionChartHTML += 'style="--stroke-length: ' + activePercent + '; stroke-dashoffset: -' + activeOffset + '; animation-delay: 0.8s;"></circle>';
+            }
+            
+            completionChartHTML += '</svg>';
+            completionChartHTML += '<div class="status-chart-text">';
+            completionChartHTML += '<div class="status-chart-percent">' + completionPercent.toFixed(0) + '%</div>';
+            completionChartHTML += '<div class="status-chart-label">Complete</div>';
+            completionChartHTML += '</div>';
+            
+            var completionChartElement = document.getElementById('completionStatusChart');
+            if (completionChartElement) {
+                completionChartElement.innerHTML = completionChartHTML;
+            }
+            
+            var completionLegendHTML = '';
+            completionLegendHTML += '<div class="legend-item"><div class="legend-label"><div class="legend-color" style="background: #4ecdc4;"></div>Complete (' + metrics.completedCount + ')</div><div class="legend-value">' + metrics.completedCount + '</div></div>';
+            completionLegendHTML += '<div class="legend-item"><div class="legend-label"><div class="legend-color" style="background: #1565C0;"></div>Testing (' + metrics.inProcessCount + ')</div><div class="legend-value">' + metrics.inProcessCount + '</div></div>';
+            completionLegendHTML += '<div class="legend-item"><div class="legend-label"><div class="legend-color" style="background: #ff6b6b;"></div>Active (' + metrics.activeCount + ')</div><div class="legend-value">' + metrics.activeCount + '</div></div>';
+            
+            var completionLegendElement = document.getElementById('completionLegend');
+            if (completionLegendElement) {
+                completionLegendElement.innerHTML = completionLegendHTML;
+            }
+            
+            // Locate Status Chart
+            var locateTotal = metrics.locateClearedCount + metrics.locateIssuesCount + metrics.locateWaitingCount;
+            var locatePercent = locateTotal > 0 ? 
+                ((metrics.locateClearedCount / locateTotal) * 100) : 0;
+            
+            var clearedPercent = locateTotal > 0 ? (metrics.locateClearedCount / locateTotal * 100) : 0;
+            var issuesPercent = locateTotal > 0 ? (metrics.locateIssuesCount / locateTotal * 100) : 0;
+            var waitingPercent = locateTotal > 0 ? (metrics.locateWaitingCount / locateTotal * 100) : 0;
+            
+            var clearedOffset = 0;
+            var issuesOffset = clearedPercent;
+            var waitingOffset = clearedPercent + issuesPercent;
+            
+            var locateChartHTML = '<svg viewBox="0 0 36 36">';
+            locateChartHTML += '<circle cx="18" cy="18" r="15.915" fill="none" stroke="#2a2a2c" stroke-width="3"></circle>';
+            
+            if (clearedPercent > 0) {
+                locateChartHTML += '<circle class="donut-segment cleared" cx="18" cy="18" r="15.915" ';
+                locateChartHTML += 'style="--stroke-length: ' + clearedPercent + '; stroke-dashoffset: -' + clearedOffset + '; animation-delay: 0s;"></circle>';
+            }
+            
+            if (issuesPercent > 0) {
+                locateChartHTML += '<circle class="donut-segment issues" cx="18" cy="18" r="15.915" ';
+                locateChartHTML += 'style="--stroke-length: ' + issuesPercent + '; stroke-dashoffset: -' + issuesOffset + '; animation-delay: 0.4s;"></circle>';
+            }
+            
+            if (waitingPercent > 0) {
+                locateChartHTML += '<circle class="donut-segment waiting" cx="18" cy="18" r="15.915" ';
+                locateChartHTML += 'style="--stroke-length: ' + waitingPercent + '; stroke-dashoffset: -' + waitingOffset + '; animation-delay: 0.8s;"></circle>';
+            }
+            
+            locateChartHTML += '</svg>';
+            locateChartHTML += '<div class="status-chart-text">';
+            locateChartHTML += '<div class="status-chart-percent">' + locatePercent.toFixed(0) + '%</div>';
+            locateChartHTML += '<div class="status-chart-label">Locates</div>';
+            locateChartHTML += '</div>';
+            
+            var locateChartElement = document.getElementById('locateStatusChart');
+            if (locateChartElement) {
+                locateChartElement.innerHTML = locateChartHTML;
+            }
+            
+var locateLegendHTML = '';
+locateLegendHTML += '<div class="legend-item"><div class="legend-label"><div class="legend-color" style="background: #4ecdc4;"></div>Clear (' + metrics.locateClearedCount + ')</div><div class="legend-value">' + metrics.locateClearedCount + '</div></div>';
+locateLegendHTML += '<div class="legend-item"><div class="legend-label"><div class="legend-color" style="background: #ff6b6b;"></div>Issues (' + metrics.locateIssuesCount + ')</div><div class="legend-value">' + metrics.locateIssuesCount + '</div></div>';
+locateLegendHTML += '<div class="legend-item"><div class="legend-label"><div class="legend-color" style="background: #00bfff;"></div>Pending (' + metrics.locateWaitingCount + ')</div><div class="legend-value">' + metrics.locateWaitingCount + '</div></div>';
+            
+            var locateLegendElement = document.getElementById('locateLegend');
+            if (locateLegendElement) {
+                locateLegendElement.innerHTML = locateLegendHTML;
+            }
+        }
+        
+        function updateSupervisorBars(supervisorData, type) {
+            var supervisors = [];
+            for (var name in supervisorData) {
+                if (supervisorData.hasOwnProperty(name)) {
+                    supervisors.push([name, supervisorData[name]]);
+                }
+            }
+            
+            if (type === 'footage') {
+                supervisors.sort(function(a, b) {
+                    return b[1].footage - a[1].footage;
+                });
+            } else {
+                supervisors.sort(function(a, b) {
+                    return b[1].projects - a[1].projects;
+                });
+            }
+            
+            if (supervisors.length === 0) return;
+            
+            var maxValue = type === 'footage' ? supervisors[0][1].footage : supervisors[0][1].projects;
+            var html = '';
+            var colors = ['#ff6b6b', '#00bfff', '#45b7d1', '#4ecdc4', '#66bb6a', '#9c27b0', '#f59e0b', '#8b5cf6'];
+            
+            for (var i = 0; i < supervisors.length; i++) {
+                var sup = supervisors[i];
+                var value = type === 'footage' ? sup[1].footage : sup[1].projects;
+                var width = maxValue > 0 ? (value / maxValue) * 100 : 0;
+                var displayValue = type === 'footage' ? formatNumber(value) + ' ft' : value + ' projects';
+                
+                html += '<div class="bar-item">';
+                html += '<div class="bar-label">' + sup[0] + '</div>';
+                html += '<div class="bar-container">';
+                html += '<div class="bar-fill animated" style="width: ' + width + '%; background: linear-gradient(90deg, ' + colors[i % colors.length] + ', ' + colors[i % colors.length] + 'dd);"></div>';
+                html += '</div>';
+                html += '<div class="bar-value">' + displayValue + '</div>';
+                html += '</div>';
+            }
+            
+            var targetId = type === 'footage' ? 'supervisorBarsFootage' : 'supervisorBarsProjects';
+            document.getElementById(targetId).innerHTML = html;
+        }
+        
+  function updateSupervisorCostChart(supervisorData) {
+    var supervisors = [];
+    for (var name in supervisorData) {
+        if (supervisorData.hasOwnProperty(name)) {
+            supervisors.push([name, supervisorData[name]]);
+        }
+    }
+    
+    supervisors.sort(function(a, b) {
+        return b[1].cost - a[1].cost;
+    });
+    
+    if (supervisors.length === 0) return;
+    
+    // Calculate costs by status for each supervisor
+    var supervisorStats = {};
+    dashboardData.rawData.forEach(function(project) {
+        var supervisor = project['Assigned Supervisor'] || 'Unassigned';
+        var cost = parseFloat((project['SOW Estimated Cost'] || '0').toString().replace(/[,$]/g, '')) || 0;
+        var status = (project['Constuction Status'] || '').toString().toLowerCase();
+        
+        if (!supervisorStats[supervisor]) {
+            supervisorStats[supervisor] = {
+                completed: 0,
+                notStarted: 0,
+                inProgress: 0,
+                locatesCalled: 0,
+                total: 0
+            };
+        }
+        
+        supervisorStats[supervisor].total += cost;
+        
+        if (status.indexOf('complete') !== -1 && status.indexOf('not') === -1) {
+            supervisorStats[supervisor].completed += cost;
+        } else if (status.indexOf('not started') !== -1) {
+            supervisorStats[supervisor].notStarted += cost;
+        } else if (status.indexOf('process') !== -1) {
+            supervisorStats[supervisor].inProgress += cost;
+        } else if (status.indexOf('locate') !== -1) {
+            supervisorStats[supervisor].locatesCalled += cost;
+        }
+    });
+    
+    var maxCost = 0;
+    for (var sup in supervisorStats) {
+        if (supervisorStats[sup].total > maxCost) {
+            maxCost = supervisorStats[sup].total;
+        }
+    }
+    
+    var html = '<style>';
+    html += '@keyframes columnGrowVertical { ';
+    html += '0% { height: 0%; opacity: 0.5; } ';
+    html += '100% { height: var(--column-height); opacity: 1; } ';
+    html += '}';
+    html += '.column-animated { animation: columnGrowVertical 1.5s ease-out forwards; }';
+    html += '</style>';
+    
+    html += '<div style="display: flex; align-items: flex-end; justify-content: space-evenly; height: 200px; padding: 10px;">';
+    
+    supervisors.forEach(function(sup, groupIndex) {
+        var stats = supervisorStats[sup[0]];
+        if (!stats) return;
+        
+        var completedHeight = maxCost > 0 ? (stats.completed / maxCost) * 100 : 0;
+        var inProgressHeight = maxCost > 0 ? (stats.inProgress / maxCost) * 100 : 0;
+        var locatesHeight = maxCost > 0 ? (stats.locatesCalled / maxCost) * 100 : 0;
+        var notStartedHeight = maxCost > 0 ? (stats.notStarted / maxCost) * 100 : 0;
+        
+        html += '<div style="display: flex; flex-direction: column; align-items: center; width: 80px;">';
+        html += '<div style="width: 100%; display: flex; gap: 4px; align-items: flex-end; height: 180px;">';
+        
+// Completed column
+if (completedHeight > 0) {
+    html += '<div class="column-animated" style="width: 18px; background: linear-gradient(180deg, #4ecdc4, #3db8b3); --column-height: ' + completedHeight + '%; border-radius: 4px 4px 0 0; animation-delay: ' + (groupIndex * 0.1) + 's; box-shadow: 0 2px 4px rgba(0,0,0,0.3); position: relative; display: flex; align-items: center; justify-content: center;" title="Completed: ' + formatCurrency(stats.completed) + '">';
+    if (completedHeight > 15) {
+        html += '<span style="writing-mode: vertical-rl; transform: rotate(180deg); font-size: 8px; color: white; font-weight: 600; text-shadow: 0 1px 2px rgba(0,0,0,0.5);">' + formatCurrency(stats.completed).replace('$', '').replace(',', '') + '</span>';
+    }
+    html += '</div>';
+} else {
+    html += '<div style="width: 18px; background: #2a2a2c; height: 2px; border-radius: 2px;"></div>';
+}
+        
+// In Progress column
+if (inProgressHeight > 0) {
+    html += '<div class="column-animated" style="width: 18px; background: linear-gradient(180deg, #1565C0, #0d4a8f); --column-height: ' + inProgressHeight + '%; border-radius: 4px 4px 0 0; animation-delay: ' + (groupIndex * 0.1 + 0.1) + 's; box-shadow: 0 2px 4px rgba(0,0,0,0.3); position: relative; display: flex; align-items: center; justify-content: center;" title="In Progress: ' + formatCurrency(stats.inProgress) + '">';
+    if (inProgressHeight > 15) {
+        html += '<span style="writing-mode: vertical-rl; transform: rotate(180deg); font-size: 8px; color: white; font-weight: 600; text-shadow: 0 1px 2px rgba(0,0,0,0.5);">' + formatCurrency(stats.inProgress).replace('$', '').replace(',', '') + '</span>';
+    }
+    html += '</div>';
+} else {
+    html += '<div style="width: 18px; background: #2a2a2c; height: 2px; border-radius: 2px;"></div>';
+}
+        
+// Locates column
+if (locatesHeight > 0) {
+    html += '<div class="column-animated" style="width: 18px; background: linear-gradient(180deg, #8b5cf6, #7c3aed); --column-height: ' + locatesHeight + '%; border-radius: 4px 4px 0 0; animation-delay: ' + (groupIndex * 0.1 + 0.2) + 's; box-shadow: 0 2px 4px rgba(0,0,0,0.3); position: relative; display: flex; align-items: center; justify-content: center;" title="Locates: ' + formatCurrency(stats.locatesCalled) + '">';
+    if (locatesHeight > 15) {
+        html += '<span style="writing-mode: vertical-rl; transform: rotate(180deg); font-size: 8px; color: white; font-weight: 600; text-shadow: 0 1px 2px rgba(0,0,0,0.5);">' + formatCurrency(stats.locatesCalled).replace('$', '').replace(',', '') + '</span>';
+    }
+    html += '</div>';
+} else {
+    html += '<div style="width: 18px; background: #2a2a2c; height: 2px; border-radius: 2px;"></div>';
+}
+        
+// Not Started column
+if (notStartedHeight > 0) {
+    html += '<div class="column-animated" style="width: 18px; background: linear-gradient(180deg, #ff6b6b, #e55a5a); --column-height: ' + notStartedHeight + '%; border-radius: 4px 4px 0 0; animation-delay: ' + (groupIndex * 0.1 + 0.3) + 's; box-shadow: 0 2px 4px rgba(0,0,0,0.3); position: relative; display: flex; align-items: center; justify-content: center;" title="Not Started: ' + formatCurrency(stats.notStarted) + '">';
+    if (notStartedHeight > 15) {
+        html += '<span style="writing-mode: vertical-rl; transform: rotate(180deg); font-size: 8px; color: white; font-weight: 600; text-shadow: 0 1px 2px rgba(0,0,0,0.5);">' + formatCurrency(stats.notStarted).replace('$', '').replace(',', '') + '</span>';
+    }
+    html += '</div>';
+} else {
+    html += '<div style="width: 18px; background: #2a2a2c; height: 2px; border-radius: 2px;"></div>';
+}
+        
+        html += '</div>';
+        html += '<div style="font-size: 10px; color: #8892b0; margin-top: 8px; text-align: center; word-wrap: break-word; width: 100%;">' + sup[0] + '</div>';
+        html += '<div style="font-size: 9px; color: #ffffff; margin-top: 3px; font-weight: 600;">' + formatCurrency(stats.total) + '</div>';
+        html += '</div>';
+    });
+    
+    html += '</div>';
+    
+    // Add legend
+    html += '<div style="display: flex; justify-content: center; gap: 12px; margin-top: 10px; flex-wrap: wrap; padding-top: 10px; border-top: 1px solid #2a2a2c;">';
+    html += '<div style="display: flex; align-items: center; gap: 4px;"><div style="width: 12px; height: 12px; background: #4ecdc4; border-radius: 2px;"></div><span style="font-size: 10px; color: #8892b0;">Completed</span></div>';
+    html += '<div style="display: flex; align-items: center; gap: 4px;"><div style="width: 12px; height: 12px; background: #1565C0; border-radius: 2px;"></div><span style="font-size: 10px; color: #8892b0;">In Progress</span></div>';
+    html += '<div style="display: flex; align-items: center; gap: 4px;"><div style="width: 12px; height: 12px; background: #8b5cf6; border-radius: 2px;"></div><span style="font-size: 10px; color: #8892b0;">Locates</span></div>';
+    html += '<div style="display: flex; align-items: center; gap: 4px;"><div style="width: 12px; height: 12px; background: #ff6b6b; border-radius: 2px;"></div><span style="font-size: 10px; color: #8892b0;">Not Started</span></div>';
+    html += '</div>';
+    
+    document.getElementById('supervisorCostChart').innerHTML = html;
+}
+        
+        function updateIssuesList(metrics) {
+    var locatesNeeded = 0;
+    var behindSchedule = 0;
+    var highRiskProjects = 0;
+    var permitDelayTotal = 0;
+    var permitDelayCount = 0;
+    
+    var now = new Date();
+    
+    for (var i = 0; i < dashboardData.rawData.length; i++) {
+        var project = dashboardData.rawData[i];
+        
+        // Locates needed
+        if (!project['Locate Date'] || project['Locate Date'] === '') {
+            locatesNeeded++;
+        }
+        
+        // Behind schedule
+        var percentString = (project['UG Percentage Complete'] || '0%').toString();
+        var completion = parseFloat(percentString.replace('%', '')) || 0;
+        var status = (project['Constuction Status'] || '').toString().toLowerCase();
+        if (completion < 30 && status.indexOf('process') !== -1) {
+            behindSchedule++;
+        }
+        
+        // High-Risk Projects: >30 days old, <50% complete, not completed
+        var assignedDate = project['Date Assigned'] ? new Date(project['Date Assigned']) : null;
+        if (assignedDate && !isNaN(assignedDate.getTime())) {
+            var daysSinceAssigned = Math.floor((now - assignedDate) / (1000 * 60 * 60 * 24));
+            
+            if (daysSinceAssigned > 30 && 
+                completion < 50 && 
+                status.indexOf('complete') === -1) {
+                highRiskProjects++;
+            }
+        }
+        
+        // Permit Delays: Days from SOW Received to Permit Received
+        var sowReceived = project['SOW Received'] ? new Date(project['SOW Received']) : null;
+        var permitStatus = (project['Permit Status'] || '').toString().toLowerCase();
+        
+        if (sowReceived && !isNaN(sowReceived.getTime()) && permitStatus.indexOf('received') !== -1) {
+            var permitReceived = project['Locate Date'] ? new Date(project['Locate Date']) : now;
+            if (!isNaN(permitReceived.getTime())) {
+                var delayDays = Math.floor((permitReceived - sowReceived) / (1000 * 60 * 60 * 24));
+                if (delayDays > 0) {
+                    permitDelayTotal += delayDays;
+                    permitDelayCount++;
+                }
+            }
+        }
+    }
+    
+    var avgPermitDelay = permitDelayCount > 0 ? Math.round(permitDelayTotal / permitDelayCount) : 0;
+    
+    var html = '';
+    html += '<div class="issue-item">';
+    html += '<div class="issue-label">Active Projects</div>';
+    html += '<div class="warning-count">' + metrics.inProcessCount + ' projects</div>';
+    html += '</div>';
+    
+    html += '<div class="issue-item">';
+    html += '<div class="issue-label">Locates Needed</div>';
+    html += '<div class="issue-count">' + locatesNeeded + ' projects</div>';
+    html += '</div>';
+    
+    html += '<div class="issue-item">';
+    html += '<div class="issue-label">Completed Projects</div>';
+    html += '<div class="success-count">' + metrics.completedCount + ' projects</div>';
+    html += '</div>';
+    
+    html += '<div class="issue-item">';
+    html += '<div class="issue-label">Behind Schedule</div>';
+    html += '<div class="' + (behindSchedule > 0 ? 'issue-count' : 'warning-count') + '">' + behindSchedule + ' projects</div>';
+    html += '</div>';
+    
+    // NEW METRICS
+    html += '<div class="issue-item">';
+    html += '<div class="issue-label">High-Risk Projects</div>';
+    html += '<div class="' + (highRiskProjects > 0 ? 'issue-count' : 'success-count') + '">' + highRiskProjects + ' projects</div>';
+    html += '</div>';
+    
+    html += '<div class="issue-item">';
+    html += '<div class="issue-label">Avg Permit Delay</div>';
+    html += '<div class="' + (avgPermitDelay > 7 ? 'issue-count' : (avgPermitDelay > 3 ? 'warning-count' : 'success-count')) + '">' + avgPermitDelay + ' days</div>';
+    html += '</div>';
+    
+    html += '<div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #2a2a2c;">';
+    html += '<div class="issue-item">';
+    html += '<div class="issue-label">Overall Status</div>';
+    html += '<div class="' + (metrics.completionRate > 50 ? 'success-count' : 'warning-count') + '">';
+    html += (metrics.completionRate > 50 ? 'On Track' : 'In Progress');
+    html += '</div>';
+    html += '</div>';
+    html += '</div>';
+    
+    document.getElementById('issuesList').innerHTML = html;
+}
+        
+        function updateFooterMetrics(metrics) {
+    var targetMetrics = calculateTargetMetrics(metrics);
+    
+    // Format: "Oct 31st, 2025 (15 Days)"
+    var daysText = targetMetrics.daysRemaining + ' Days';
+    var formattedDate = targetMetrics.targetDate + ' (' + daysText + ')';
+    
+    document.getElementById('targetDate').textContent = formattedDate;
+    document.getElementById('dailyRate').textContent = formatNumber(targetMetrics.dailyRate) + ' ft/day';
+    
+    var atRiskEl = document.getElementById('atRiskStatus');
+    atRiskEl.textContent = targetMetrics.atRisk;
+    
+    if (targetMetrics.atRisk === 'HIGH RISK') {
+        atRiskEl.style.color = '#ff6b6b';
+    } else if (targetMetrics.atRisk === 'AT RISK') {
+        atRiskEl.style.color = '#f59e0b';
+    } else {
+        atRiskEl.style.color = '#4ecdc4';
+    }
+}
+        
+        function updateTime() {
+            var now = new Date();
+            var dateOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            var timeOptions = { hour: '2-digit', minute: '2-digit', second: '2-digit' };
+            
+            document.getElementById('currentDate').textContent = now.toLocaleDateString('en-US', dateOptions);
+            document.getElementById('currentTime').textContent = now.toLocaleTimeString('en-US', timeOptions);
+        }
+        
+        function formatNumber(num) {
+            return num ? num.toLocaleString() : '0';
+        }
+        
+        function formatCurrency(value) {
+            return new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: 'USD',
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0
+            }).format(value);
+        }
+        
+        loadExcelData();
+        setInterval(updateTime, 1000);
+        setInterval(refreshChartAnimations, ANIMATION_INTERVAL);
+        setInterval(refreshStatusCharts, STATUS_ANIMATION_INTERVAL);
+        setInterval(animateBarCharts, BAR_ANIMATION_INTERVAL);
+        setInterval(loadExcelData, 3600000);
+    </script>
+
+ <!-- Weather Widget Script -->
+    <script>
+    !function(d,s,id){var js,fjs=d.getElementsByTagName(s)[0];if(!d.getElementById(id)){js=d.createElement(s);js.id=id;js.src='https://weatherwidget.io/js/widget.min.js';fjs.parentNode.insertBefore(js,fjs);}}(document,'script','weatherwidget-io-js');
+    </script>
+    
+    <!-- Calendar Widget Script -->
+    <script>
+    class CalendarWidget {
+        constructor(containerId, options = {}) {
+            this.container = document.getElementById(containerId);
+            if (!this.container) {
+                console.error(`Calendar Widget: Container with id '${containerId}' not found`);
+                return;
+            }
+            this.options = { showTime: true, showTodayInfo: true, ...options };
+            this.currentDate = new Date();
+            this.today = new Date();
+            this.monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+                'July', 'August', 'September', 'October', 'November', 'December'];
+            this.dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+            this.init();
+        }
+
+        init() {
+            this.createHTML();
+            this.setupEventListeners();
+            this.renderCalendar();
+            this.updateTodayInfo();
+            if (this.options.showTime) {
+                this.updateTime();
+                this.timeInterval = setInterval(() => this.updateTime(), 1000);
+            }
+            this.scheduleNextUpdate();
+        }
+
+        createHTML() {
+            this.container.innerHTML = `
+                <div class="calendar-widget">
+                    <div class="calendar-widget-header">
+                        <button class="calendar-widget-nav-button" data-action="prev">‹</button>
+                        <div class="calendar-widget-month-year"></div>
+                        <button class="calendar-widget-nav-button" data-action="next">›</button>
+                    </div>
+                    <div class="calendar-widget-grid"></div>
+                    ${this.options.showTodayInfo || this.options.showTime ? `
+                    <div class="calendar-widget-info">
+                        ${this.options.showTodayInfo ? '<div>Today: <span class="today-date"></span></div>' : ''}
+                        ${this.options.showTime ? '<div class="calendar-widget-current-time"></div>' : ''}
+                    </div>` : ''}
+                </div>`;
+        }
+
+        setupEventListeners() {
+            const widget = this.container.querySelector('.calendar-widget');
+            widget.addEventListener('click', (e) => {
+                if (e.target.dataset.action === 'prev') {
+                    this.currentDate.setMonth(this.currentDate.getMonth() - 1);
+                    this.renderCalendar();
+                } else if (e.target.dataset.action === 'next') {
+                    this.currentDate.setMonth(this.currentDate.getMonth() + 1);
+                    this.renderCalendar();
+                }
+            });
+        }
+
+        renderCalendar() {
+            const year = this.currentDate.getFullYear();
+            const month = this.currentDate.getMonth();
+            this.container.querySelector('.calendar-widget-month-year').textContent = 
+                `${this.monthNames[month]} ${year}`;
+            const grid = this.container.querySelector('.calendar-widget-grid');
+            grid.innerHTML = '';
+            this.dayNames.forEach(day => {
+                const dayHeader = document.createElement('div');
+                dayHeader.className = 'calendar-widget-day-header';
+                dayHeader.textContent = day;
+                grid.appendChild(dayHeader);
+            });
+            const firstDay = new Date(year, month, 1);
+            const lastDay = new Date(year, month + 1, 0);
+            const firstDayOfWeek = firstDay.getDay();
+            const daysInMonth = lastDay.getDate();
+            const prevMonth = new Date(year, month - 1, 0);
+            for (let i = firstDayOfWeek - 1; i >= 0; i--) {
+                const dayCell = this.createDayCell(prevMonth.getDate() - i, true, year, month - 1);
+                grid.appendChild(dayCell);
+            }
+            for (let day = 1; day <= daysInMonth; day++) {
+                const dayCell = this.createDayCell(day, false, year, month);
+                grid.appendChild(dayCell);
+            }
+            const totalCells = grid.children.length - 7;
+            const remainingCells = 42 - totalCells;
+            for (let day = 1; day <= remainingCells; day++) {
+                const dayCell = this.createDayCell(day, true, year, month + 1);
+                grid.appendChild(dayCell);
+            }
+        }
+
+        createDayCell(day, isOtherMonth, year, month) {
+            const cell = document.createElement('div');
+            cell.className = 'calendar-widget-day-cell';
+            cell.textContent = day;
+            if (isOtherMonth) cell.classList.add('other-month');
+            const cellDate = new Date(year, month, day);
+            if (this.isSameDay(cellDate, this.today) && !isOtherMonth) {
+                cell.classList.add('today');
+            }
+            return cell;
+        }
+
+        isSameDay(date1, date2) {
+            return date1.getDate() === date2.getDate() &&
+                   date1.getMonth() === date2.getMonth() &&
+                   date1.getFullYear() === date2.getFullYear();
+        }
+
+        updateTodayInfo() {
+            if (!this.options.showTodayInfo) return;
+            const todayElement = this.container.querySelector('.today-date');
+            if (todayElement) {
+                const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+                todayElement.textContent = this.today.toLocaleDateString('en-US', options);
+            }
+        }
+
+        updateTime() {
+            if (!this.options.showTime) return;
+            const timeElement = this.container.querySelector('.calendar-widget-current-time');
+            if (timeElement) {
+                const now = new Date();
+                const timeString = now.toLocaleTimeString('en-US', {
+                    hour12: true, hour: 'numeric', minute: '2-digit', second: '2-digit'
+                });
+                timeElement.textContent = timeString;
+                if (!this.isSameDay(now, this.today)) {
+                    this.today = new Date(now);
+                    this.updateTodayInfo();
+                    this.renderCalendar();
+                }
+            }
+        }
+
+        scheduleNextUpdate() {
+            const now = new Date();
+            const tomorrow = new Date(now);
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            tomorrow.setHours(0, 0, 0, 0);
+            const msUntilMidnight = tomorrow.getTime() - now.getTime();
+            this.midnightTimeout = setTimeout(() => {
+                this.today = new Date();
+                this.updateTodayInfo();
+                this.renderCalendar();
+                this.scheduleNextUpdate();
+            }, msUntilMidnight);
+        }
+
+        goToToday() { this.currentDate = new Date(); this.renderCalendar(); }
+        goToDate(year, month) { this.currentDate = new Date(year, month, 1); this.renderCalendar(); }
+        destroy() {
+            if (this.timeInterval) clearInterval(this.timeInterval);
+            if (this.midnightTimeout) clearTimeout(this.midnightTimeout);
+            this.container.innerHTML = '';
+        }
+    }
+    window.CalendarWidget = CalendarWidget;
+    
+    // Initialize calendar when DOM is ready
+    document.addEventListener('DOMContentLoaded', () => {
+        const myCalendar = new CalendarWidget('calendar-container', { showTodayInfo: false });
+    });
+    </script>
+
+</body>
+</html>

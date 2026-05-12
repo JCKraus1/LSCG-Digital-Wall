@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LSCG - Tillman Operations Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            overflow: hidden;
+        }
+
+        iframe {
+            width: 100vw;
+            height: 100vh;
+            border: none;
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <iframe id="contentFrame"></iframe>
+
+    <script>
+        // Configure your pages here - add or remove URLs as needed
+        const pages = [
+            'Market 1 AutoUpdate Dashboard.html',
+            'Market 1.2 AutoUpdate Dashboard.html',
+            'Market 2 AutoUpdate Dashboard.html',
+            'Market 3.1 AutoUpdate Dashboard.html',
+            'Market 3.2 AutoUpdate Dashboard.html',
+	    'Market 3.3 AutoUpdate Dashboard.html',
+            'Market 7 AutoUpdate Dashboard.html',
+            'Market 10 AutoUpdate Dashboard.html'
+
+        ];
+
+        // Set rotation interval in seconds (default: 60)
+        const intervalSeconds = 60;
+
+        let currentIndex = 0;
+
+        // Load a page
+        function loadPage(index) {
+            const iframe = document.getElementById('contentFrame');
+            iframe.src = pages[index];
+        }
+
+        // Rotate to next page
+        function nextPage() {
+            currentIndex = (currentIndex + 1) % pages.length;
+            loadPage(currentIndex);
+        }
+
+        // Start rotation
+        function startRotation() {
+            setInterval(nextPage, intervalSeconds * 1000);
+        }
+
+        // Initialize - load first page and start rotation
+        loadPage(0);
+        startRotation();
+    </script>
+</body>
+</html>
