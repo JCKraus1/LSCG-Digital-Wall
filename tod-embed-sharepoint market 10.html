@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TOD Embed</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #000 url('https://weatherwidget.io/i/random_grey.png');
+    }
+    #scaler {
+      position: absolute;
+      top: 0;
+      left: 0;
+      transform-origin: top left;
+    }
+    #scaler iframe {
+      border: none;
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <div id="scaler">
+    <iframe
+      id="tod"
+      src="https://jckraus1.github.io/LSCG-Digital-Wall/Market 10 AutoUpdate Dashboard.html"
+      scrolling="no"
+    ></iframe>
+  </div>
+
+  <script>
+    // Set the natural size of your dashboard here
+    const DASH_WIDTH = 1920;
+    const DASH_HEIGHT = 1080;
+
+    const scaler = document.getElementById('scaler');
+    const iframe = document.getElementById('tod');
+
+    iframe.width = DASH_WIDTH;
+    iframe.height = DASH_HEIGHT;
+
+    function rescale() {
+      const scaleX = window.innerWidth / DASH_WIDTH;
+      const scaleY = window.innerHeight / DASH_HEIGHT;
+      const scale = Math.min(scaleX, scaleY);
+      scaler.style.transform = `scale(${scale})`;
+    }
+
+    rescale();
+    window.addEventListener('resize', rescale);
+  </script>
+</body>
+</html>
